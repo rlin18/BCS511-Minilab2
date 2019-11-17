@@ -2,7 +2,10 @@
 title: "Minilab 2"
 author: "Ruitao Lin"
 date: "11/16/2019"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -135,19 +138,40 @@ There is significant main effect of sex on LogC50.
 
 
 ```{r}
-d.motion %>% 
+# Identifying outliers
+
+d.motion %<>% 
   mutate(Rmax_in = abs(scale(Rmax)) < 3) %>%
   mutate(Slope_in = abs(scale(Slope)) < 3) %>%
   mutate(C50_in = abs(scale(C50)) < 3) %>%
   mutate(LogAsymp_in = abs(scale(LogAsymp)) < 3)
-
-
+d
 ```
+
+```{r}
+m.rm.new = d.motion %>% 
+  filter(Rmax_in == TRUE) %>%
+  lm(Rmax ~ as.factor(Sex), data = .)
+
+tidy(m.rm.new)
+```
+
+Outliers are defined as outside of 3 standard deviations. After removing outliers, sex still has strong main effects on Rmax.
+
+```{r}
+m.slp.new = d.motion %>% 
+  filter(Slope_in == TRUE) %>%
+  lm(Slope ~ as.factor(Sex), data = .)
+
+tidy(m.slp.new)
+```
+
+After removing outliers, there is still no main effect of sex on slope. 
 
 
 ```{r nooutlier.c50}
 m.c50 = d.motion %>% 
-  na.omit(C50) %>%
+  filter(C50_in == TRUE) %>%
   lm(C50 ~ as.factor(Sex), data = .)
 
 tidy(m.c50)
