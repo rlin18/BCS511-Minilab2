@@ -1,0 +1,438 @@
+---
+title: "Minilab 2"
+author: "Ruitao Lin"
+date: "11/16/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("tidyverse")
+library("magrittr")
+library("mgcv")      # for GAMMs
+library("broom")     # for elegant handling of model outputs
+library("purrr")
+library("tidyr")
+#library("lmer4")
+load("./data/Minilab2 data-10-30-19.RData")
+```
+
+## Week 1
+
+## 1
+
+
+```{r select.data}
+
+d %<>% 
+  select(Subject, Sex, Task, Rmax, Slope, C50, Asymp, LogAsymp, LogC50, VideoGaming, EmphatizingQuotient, SystemizingQuotient, ADHD, AutismQuotient) %>%
+  distinct()
+
+
+
+```
+
+
+```{r datavis.rmax}
+#Only Motion task
+#visualizing rmax
+d.motion = 
+  d %>% filter(Task == "Motion") 
+```
+
+
+
+
+
+```{r}
+d.motion %>%
+  ggplot(mapping = (aes(x = Rmax, fill=as.factor(Sex)))) +
+  geom_histogram(alpha = 0.5, position = "dodge")
+```
+
+```{r}
+d.motion %>%
+  ggplot(mapping = (aes(x = as.factor(Sex), y = Rmax))) +
+  geom_violin()
+```
+Visually, Rmax seem to have different distribution across sex.
+
+```{r model.rmax}
+m.rmax = d.motion %>% 
+  glm(Rmax ~ Sex, data = .)
+tidy(m.rmax)
+```
+To test the main effect of sex on Rmax, we conducted a linear regression test, in which male is sex = 0, female is sex = 1.
+There was a significant main effect of participants' sex on Rmax, beta = -0.021, t = -4.418, p < 0.05. Female has lower Rmax than male, which means they have higher duration threshold. 
+
+```{r datavis.slope}
+d.motion %>%
+  ggplot(mapping = (aes(x = as.factor(Sex), y = Slope))) +
+  geom_violin()
+```
+
+```{r model.slope}
+m.slp = d.motion %>% 
+  glm(Slope ~ Sex, data = .)
+tidy(m.slp)
+```
+There was no significant main effect of participants' sex on slope, beta = 0.595, t = 0.857, p > 0.1.
+```{r datavis.c50}
+d.motion %>%
+  ggplot(mapping = (aes(x = as.factor(Sex), y = C50))) +
+  geom_violin()
+```
+
+
+```{r model.c50}
+m.c50 = d.motion %>% 
+  lm(C50 ~ as.factor(Sex), data = .)
+
+tidy(m.c50)
+```
+When all data are included, there was no significant main effect of participants' sex on C50, beta = -1.27, t = -1.08, p > 0.1.
+
+
+## 2 
+```{r datavis.asymp}
+d.motion %>%
+  ggplot(mapping = (aes(x = as.factor(Sex), y = Asymp))) +
+  geom_violin()
+```
+
+
+```{r model.asymp}
+m.asymp = d.motion %>% 
+  glm(Asymp ~ Sex, data = .)
+tidy(m.asymp)
+```
+
+Asymp is the inverse of Rmax. Just like Rmax, there is also significant main effect of sex on Asymp, beta = 18.7, d=t = 4.07, p < 0.01.
+
+
+
+```{r t.test}
+t.test(data = d.motion, Asymp ~ as.factor(Sex))
+t.test(data = d.motion, LogAsymp ~ as.factor(Sex))
+
+```
+
+LogAsymp is the log transfom of Asymp and it compresses Asymp, thus reducing the difference. And the impact of outliers is reduced, so there is no significant main effect of sex on LogAsymp. This illustrate how selection of measurement can influence the main result. 
+```{r datavis.logc50}
+d.motion %>%
+  ggplot(mapping = (aes(x = as.factor(Sex), y = LogC50))) +
+  geom_violin()
+```
+
+
+```{r model.logc50}
+m.logc50 = d.motion %>% 
+  glm(LogC50 ~ Sex, data = .)
+tidy(m.logc50)
+```
+There is significant main effect of sex on LogC50.
+
+
+
+```{r}
+d.motion %>% 
+  mutate(Rmax_in = abs(scale(Rmax)) < 3) %>%
+  mutate(Slope_in = abs(scale(Slope)) < 3) %>%
+  mutate(C50_in = abs(scale(C50)) < 3) %>%
+  mutate(LogAsymp_in = abs(scale(LogAsymp)) < 3)
+
+
+```
+
+
+```{r nooutlier.c50}
+m.c50 = d.motion %>% 
+  na.omit(C50) %>%
+  lm(C50 ~ as.factor(Sex), data = .)
+
+tidy(m.c50)
+```
+When excluding an outlier(outside of 3 standard deviations), there is a significant main effect of sex on C50. 
+
+## 3 Different Main Effects of Sex
+```{r}
+m.int.rmax = d.motion %>% 
+  glm(Rmax ~ Sex + Slope + Sex*Slope, data = .)
+summary(m.int.rmax)
+```
+
+```{r}
+anova(m.rmax, m.int.rmax, test = "Chisq")
+```
+
+The interaction term is significant. There is interaction. The effect of Sex on Rmax and Slope are different.
+
+```{r}
+m.int.C50 = d.motion %>% 
+  na.omit(C50) %>%
+  glm(C50 ~ Sex + Slope + Sex*Slope, data = .)
+summary(m.int.C50)
+```
+
+```{r}
+anova(m.c50, m.int.C50, test = "Chisq")
+```
+
+For C50, there seem to be no interaction. There is no evidence for the difference of main effects. 
+
+
+## 4 
+# Angular Task
+```{r}
+#Only Angular task
+#visualizing rmax
+d.angular = 
+  d %>% filter(Task == "Angular") 
+
+d.angular %>%
+  ggplot(mapping = (aes(x = Rmax, fill=as.factor(Sex)))) +
+  geom_histogram(alpha = 0.5, position = "dodge")
+```
+
+```{r}
+d.angular %>%
+  ggplot(mapping = (aes(x = as.factor(Sex), y = Rmax))) +
+  geom_violin()
+```
+```{r}
+m.rm.ang = d.angular %>%
+  na.omit(Rmax) %>%
+  glm(Rmax ~ Sex, data = .)
+tidy(m.rm.ang)
+```
+For the angular task, there was no significant main effect of participants' sex on Rmax, beta = -0.064, t = -0.375, p > 0.1.
+
+
+```{r}
+m.asy.ang = d.angular %>%
+  na.omit(Asymp) %>%
+  glm(Asymp ~ Sex, data = .)
+tidy(m.asy.ang)
+```
+
+There is also no significant main effect of Sex on asymp.
+
+```{r}
+d.angular %>%
+  ggplot(mapping = (aes(x = as.factor(Sex), y = Slope))) +
+  geom_violin()
+```
+
+```{r}
+m.slp.ang = d.angular %>% 
+  na.omit(Slope) %>%
+  glm(Slope ~ Sex, data = .)
+tidy(m.slp.ang)
+```
+There was no significant main effect of participants' sex on slope, beta = -0.1893, t = -0.492, p > 0.1.
+```{r}
+d.angular %>%
+  ggplot(mapping = (aes(x = as.factor(Sex), y = C50))) +
+  geom_violin()
+```
+
+
+```{r}
+m.c50.ang = d.angular %>% 
+  na.omit(C50) %>%
+  glm(C50 ~ Sex, data = .)
+tidy(m.c50.ang)
+```
+There was no significant main effect of participants' sex on C50, beta = 4.274, t = 0.462, p > 0.1.
+
+```{r}
+m.logc50.ang = d.angular %>% 
+  glm(LogC50 ~ Sex, data = .)
+tidy(m.logc50.ang)
+```
+There was no significant main effect of participants' sex on LogC50, beta = 0.026, t = 0.5, p > 0.1.
+
+
+
+```{r}
+d.angular %>% 
+  mutate(Rmax_in = abs(scale(Rmax)) < 3) %>%
+  mutate(Slope_in = abs(scale(Slope)) < 3) %>%
+  mutate(C50_in = abs(scale(C50)) < 3) %>%
+  mutate(LogAsymp_in = abs(scale(LogAsymp)) < 3)
+
+
+```
+
+# Mask tasks
+```{r}
+#Only Mask task
+#visualizing rmax
+d.mask = 
+  d %>% filter(Task == "Mask") 
+
+d.mask %>%
+  ggplot(mapping = (aes(x = Rmax, fill=as.factor(Sex)))) +
+  geom_histogram(position = "dodge")
+```
+
+```{r}
+d.mask %>%
+  ggplot(mapping = (aes(x = as.factor(Sex), y = Rmax))) +
+  geom_violin()
+```
+
+```{r}
+m.rmax.mask = d.mask %>% 
+  na.omit(Rmax) %>%
+  glm(Rmax ~ Sex, data = .)
+tidy(m.rmax.mask)
+```
+There was no significant main effect of participants' sex on Rmax, beta = 0.007, t = 0.474, p > 0.1.
+```{r}
+d.mask %>%
+  ggplot(mapping = (aes(x = as.factor(Sex), y = Slope))) +
+  geom_violin()
+```
+
+```{r}
+m.slp.mask = d.mask %>% 
+  na.omit(Slope) %>%
+  glm(Slope ~ Sex, data = .)
+tidy(m.slp.mask)
+```
+There was no significant main effect of participants' sex on slope, beta = 0.337, t = 0.321, p > 0.1.
+```{r}
+d.mask %>%
+  ggplot(mapping = (aes(x = as.factor(Sex), y = C50))) +
+  geom_violin()
+```
+
+
+```{r}
+m.c50.mask = d.mask %>% 
+  na.omit(C50) %>%
+  glm(C50 ~ Sex, data = .)
+summary(m.c50.mask)
+```
+There was no significant main effect of participants' sex on C50, beta = 2.211, t = 0.220, p > 0.1.
+
+
+
+```{r}
+m.logc50.mask = d.mask %>% 
+  glm(LogC50 ~ Sex, data = .)
+tidy(m.logc50.mask)
+```
+
+There was no significant main effect of participants' sex on LogC50, beta = 0.049, t = 0.498, p > 0.1.
+
+# Conclusion
+For the Angular and Mask tasks, Sex is not a significant factor in the three parameters.
+
+## 5
+#Autism Quotient
+```{r}
+d.motion %>%
+  ggplot(mapping = (aes(x = AutismQuotient, y = Rmax))) +
+  geom_point()
+```
+
+# VideoGaming
+```{r}
+d.motion %>%
+  ggplot(mapping = (aes(x = as.factor(VideoGaming), y = Rmax))) +
+  geom_violin()
+```
+
+
+# Emphatizing Quotient
+```{r}
+d.motion %>%
+  ggplot(mapping = (aes(x = EmphatizingQuotient, y = Rmax))) +
+  geom_point()
+```
+
+# Systemizing Quotient
+```{r}
+d.motion %>%
+  ggplot(mapping = (aes(x = SystemizingQuotient, y = Rmax))) +
+  geom_point()
+```
+
+# ADHD
+```{r}
+d.motion %>%
+  ggplot(mapping = (aes(x = ADHD, y = Rmax))) +
+  geom_point()
+```
+
+
+```{r}
+#wholistic model
+m.whole = d.motion %>% 
+  glm(Rmax ~ Sex + AutismQuotient + VideoGaming + SystemizingQuotient + EmphatizingQuotient + ADHD, data = .)
+tidy(m.whole)
+```
+
+In the wholistic model, only sex and ADHD are significant predictors.
+
+```{r}
+m1 = lm(AutismQuotient ~ Sex, data = d.motion)
+summary(m1)
+```
+
+Sex and Autism quotient are not highly correlated
+
+```{r}
+m2 = lm(VideoGaming ~ Sex, data = d.motion)
+summary(m2)
+```
+
+Sex and videogaming seem to be moderately correlated.
+
+
+```{r}
+m3 = lm(SystemizingQuotient ~ Sex, data = d.motion)
+summary(m3)
+```
+
+Sex and systemizing quotients seem to be not correlated.
+
+
+```{r}
+m4 = lm(ADHD ~ Sex, data = d.motion)
+summary(m4)
+```
+
+ADHD and sex are not correlated.
+
+
+```{r}
+m5 = lm(AutismQuotient ~ VideoGaming, data = d.motion)
+summary(m5)
+```
+
+In the data, videogaming and sex are moderately correlated.
+
+# Anova
+```{r}
+m.small = d.motion %>% 
+  glm(Rmax ~ AutismQuotient + SystemizingQuotient + EmphatizingQuotient + ADHD + Sex, data = .)
+summary(m.small)
+```
+
+
+```{r}
+anova(m.small, m.whole)
+```
+
+removing VideoGaming significantly changed the model.
+
+```{r}
+m.small2 = d.motion %>% 
+  glm(Rmax ~ VideoGaming + AutismQuotient + SystemizingQuotient + EmphatizingQuotient + Sex, data = .)
+summary(m.small2)
+anova(m.small2, m.whole)
+
+```
